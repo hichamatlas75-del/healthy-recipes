@@ -12,7 +12,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<!-- Firebase Storage remplacé par Cloudinary (plan Spark compatible) -->
 
 <style>
 /* ════════════════════════════════════════════
@@ -1521,7 +1521,7 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
   <!-- SUBMIT BAR -->
   <div class="submit-bar">
     <div class="submit-info">
-      Sauvegarde dans <strong>Firebase Firestore</strong> · Photo dans <strong>Firebase Storage</strong>
+      Sauvegarde dans <strong>Firebase Firestore</strong> · Photo dans <strong>Cloudinary</strong> (gratuit)
     </div>
     <div style="display:flex;gap:12px;align-items:center;">
       <button type="button" class="btn-reset" onclick="resetForm()">Réinitialiser</button>
@@ -1546,18 +1546,26 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
    → Tes applications → SDK Config
 ══════════════════════════════════════════ */
 const FIREBASE_CONFIG = {
-  apiKey:            "REMPLACE_PAR_TON_API_KEY",
-  authDomain:        "ton-projet.firebaseapp.com",
-  projectId:         "ton-projet-id",
-  storageBucket:     "ton-projet-id.appspot.com",
-  messagingSenderId: "1234567890",
-  appId:             "1:1234567890:web:abc123"
+  apiKey:            "AIzaSyDq9hyqFs52aIS1k_PYxoue8p50201hPPk",
+  authDomain:        "healthy-recipes-7c068.firebaseapp.com",
+  projectId:         "healthy-recipes-7c068",
+  storageBucket:     "healthy-recipes-7c068.firebasestorage.app",
+  messagingSenderId: "858122646680",
+  appId:             "1:858122646680:web:e53b5e9eb5fa93ffe6cced",
+  measurementId:     "G-0B8BVYS7Q6"
 };
+
+const CLOUDINARY_CONFIG = {
+  cloudName:    "dzztoqyzl",
+  uploadPreset: "healthy_unsigned",
+  folder:       "healthy-recipes"
+};
+const cloudinaryReady = () => true;
 
 /* ══════════════════════════════════════════
    FIREBASE INIT
 ══════════════════════════════════════════ */
-let db, storage, auth;
+let db, auth;
 let firebaseReady = false;
 
 function initFirebase() {
@@ -1565,10 +1573,9 @@ function initFirebase() {
     if (!firebase.apps.length) {
       firebase.initializeApp(FIREBASE_CONFIG);
     }
-    db      = firebase.firestore();
-    storage = firebase.storage();
-    auth    = firebase.auth();
-    firebaseReady = (FIREBASE_CONFIG.apiKey !== "REMPLACE_PAR_TON_API_KEY");
+    db   = firebase.firestore();
+    auth = firebase.auth();
+    firebaseReady = true;
 
     if (!firebaseReady) {
       document.getElementById('configWarning').style.display = 'flex';
@@ -1992,12 +1999,14 @@ async function saveRecipe() {
   try {
     let photoUrl = '';
 
-    // 1. Upload image if present
-    if (imageFile && firebaseReady) {
-      showToast('Upload de la photo…', 'info');
-      photoUrl = await uploadImage(imageFile);
-    } else if (imageLocalUrl && !firebaseReady) {
-      photoUrl = ''; // No Firebase, skip
+    // 1. Upload image via Cloudinary (gratuit)
+    if (imageFile) {
+      if (cloudinaryReady()) {
+        showToast('☁️ Upload photo vers Cloudinary…', 'info');
+        photoUrl = await uploadImageCloudinary(imageFile);
+      } else {
+        showToast('⚠️ Configure Cloudinary pour uploader les photos', 'info');
+      }
     }
 
     // 2. Build recipe object
@@ -2051,33 +2060,51 @@ async function saveRecipe() {
   }
 }
 
-async function uploadImage(file) {
+async function uploadImageCloudinary(file) {
+  const progressWrap = document.getElementById('uploadProgress');
+  const progressFill = document.getElementById('uploadProgressFill');
+  progressWrap.classList.add('show');
+
   return new Promise((resolve, reject) => {
-    const ext       = file.name.split('.').pop();
-    const fileName  = `recipes/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const storageRef = storage.ref(fileName);
-    const uploadTask = storageRef.put(file);
+    const formData = new FormData();
+    formData.append('file',         file);
+    formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+    formData.append('folder',        CLOUDINARY_CONFIG.folder);
+    formData.append('public_id',     `recipe_${Date.now()}`);
 
-    const progressWrap = document.getElementById('uploadProgress');
-    const progressFill = document.getElementById('uploadProgressFill');
-    progressWrap.classList.add('show');
+    const xhr = new XMLHttpRequest();
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`;
+    xhr.open('POST', url);
 
-    uploadTask.on('state_changed',
-      snapshot => {
-        const pct = (snapshot.bytesTransferred / snapshot.totalBytes * 100).toFixed(0);
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round(e.loaded / e.total * 100);
         progressFill.style.width = pct + '%';
-      },
-      error => {
-        progressWrap.classList.remove('show');
-        reject(error);
-      },
-      async () => {
-        progressWrap.classList.remove('show');
-        progressFill.style.width = '0';
-        const url = await uploadTask.snapshot.ref.getDownloadURL();
-        resolve(url);
       }
-    );
+    };
+
+    xhr.onload = () => {
+      progressWrap.classList.remove('show');
+      progressFill.style.width = '0';
+      if (xhr.status === 200) {
+        const res = JSON.parse(xhr.responseText);
+        // Return optimized URL: auto format + quality + max width 1080px
+        const secureUrl = res.secure_url.replace(
+          '/upload/',
+          '/upload/f_auto,q_auto,w_1080/'
+        );
+        resolve(secureUrl);
+      } else {
+        reject(new Error('Cloudinary upload failed: ' + xhr.responseText));
+      }
+    };
+
+    xhr.onerror = () => {
+      progressWrap.classList.remove('show');
+      reject(new Error('Erreur réseau lors de l\'upload Cloudinary'));
+    };
+
+    xhr.send(formData);
   });
 }
 
@@ -2149,4 +2176,3 @@ function escHtml(str) {
 </script>
 </body>
 </html>
-
