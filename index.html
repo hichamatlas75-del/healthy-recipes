@@ -1,0 +1,2152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthy Recipes — Admin Data Entry</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- ════════════════════════════════════════════
+     FIREBASE SDK v9 COMPAT (CDN)
+════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+<style>
+/* ════════════════════════════════════════════
+   VARIABLES & RESET
+════════════════════════════════════════════ */
+:root {
+  --bg:        #171310;
+  --bg2:       #1F1A17;
+  --bg3:       #27201C;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --sage:      #7A9E7E;
+  --sage-dim:  rgba(122,158,126,0.15);
+  --terra:     #C17A5B;
+  --terra-dim: rgba(193,122,91,0.15);
+  --gold:      #C9A84C;
+  --gold-dim:  rgba(201,168,76,0.12);
+  --cream:     #FAF7F2;
+  --cream-dim: rgba(250,247,242,0.55);
+  --cream-muted: rgba(250,247,242,0.3);
+  --warm:      #8B6355;
+  --red:       #E05C5C;
+  --font-display: 'Playfair Display', serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+  --radius:    12px;
+  --radius-sm: 8px;
+  --radius-lg: 20px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 15px; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--cream);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ════════════════════════════════════════════
+   SCROLLBAR
+════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--warm); }
+
+/* ════════════════════════════════════════════
+   LOGIN SCREEN
+════════════════════════════════════════════ */
+#login-screen {
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(122,158,126,0.12) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 80%, rgba(193,122,91,0.10) 0%, transparent 50%),
+              var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  transition: opacity 0.5s, visibility 0.5s;
+}
+
+#login-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 400px;
+  padding: 48px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sage), var(--terra));
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.login-logo-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--sage), #4A7A4E);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.login-logo-text {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--cream);
+}
+
+.login-logo-text span { color: var(--sage); font-style: italic; }
+
+.login-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--cream);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: var(--cream-muted);
+  margin-bottom: 36px;
+  font-weight: 300;
+}
+
+.field-group { margin-bottom: 20px; }
+
+.field-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 8px;
+}
+
+.field-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--cream);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field-input:focus {
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px var(--sage-dim);
+}
+
+.field-input::placeholder { color: rgba(250,247,242,0.2); }
+
+.btn-primary {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--sage), #4A7A4E);
+  color: var(--cream);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.login-error {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(224,92,92,0.12);
+  border: 1px solid rgba(224,92,92,0.3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: #F08080;
+  display: none;
+}
+
+.login-error.show { display: block; }
+
+/* ════════════════════════════════════════════
+   APP SHELL
+════════════════════════════════════════════ */
+#app {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+#app.visible { display: flex; }
+
+/* ── HEADER ── */
+.app-header {
+  height: 64px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--sage), #4A7A4E);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+
+.header-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--cream);
+}
+
+.header-title em { color: var(--sage); font-style: italic; }
+
+.header-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  background: var(--sage-dim);
+  color: var(--sage);
+  border: 1px solid rgba(122,158,126,0.2);
+  border-radius: 100px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 12px;
+  color: var(--cream-dim);
+}
+
+.user-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--sage);
+  box-shadow: 0 0 6px var(--sage);
+}
+
+.btn-logout {
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--cream-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+/* ── MAIN LAYOUT ── */
+.app-main {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ════════════════════════════════════════════
+   FORM PANEL (LEFT)
+════════════════════════════════════════════ */
+.form-panel {
+  padding: 40px 40px 80px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+
+.form-section {
+  margin-bottom: 40px;
+}
+
+.form-section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--terra);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-section-title::before {
+  content: '';
+  width: 16px; height: 2px;
+  background: var(--terra);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-grid.col3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-grid.col1 { grid-template-columns: 1fr; }
+
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group.full { grid-column: 1 / -1; }
+
+label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+
+label span.required { color: var(--terra); margin-left: 4px; }
+
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--cream);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px var(--sage-dim);
+}
+
+input::placeholder, textarea::placeholder { color: rgba(250,247,242,0.2); }
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A9E7E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+select option { background: var(--bg2); color: var(--cream); }
+
+textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+/* ── INPUT WITH UNIT ── */
+.input-unit-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-unit-wrap input { padding-right: 52px; }
+
+.input-unit {
+  position: absolute;
+  right: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--cream-muted);
+  pointer-events: none;
+}
+
+/* ── DYNAMIC LISTS ── */
+.dynamic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dynamic-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.row-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cream-muted);
+  flex-shrink: 0;
+}
+
+.dynamic-row input,
+.dynamic-row textarea {
+  flex: 1;
+}
+
+.btn-remove {
+  width: 32px; height: 32px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(224,92,92,0.5);
+  font-size: 16px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.btn-remove:hover {
+  background: rgba(224,92,92,0.1);
+  color: var(--red);
+  border-color: rgba(224,92,92,0.3);
+}
+
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: transparent;
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--cream-dim);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.btn-add:hover {
+  border-color: var(--sage);
+  color: var(--sage);
+  background: var(--sage-dim);
+}
+
+.btn-add-icon {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--bg3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ── IMAGE UPLOAD ── */
+.upload-zone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--sage);
+  background: var(--sage-dim);
+}
+
+.upload-zone input[type="file"] {
+  position: absolute; inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.upload-icon { font-size: 36px; margin-bottom: 12px; }
+
+.upload-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cream);
+  margin-bottom: 4px;
+}
+
+.upload-sub {
+  font-size: 12px;
+  color: var(--cream-muted);
+}
+
+.upload-preview {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: none;
+}
+
+.upload-preview.show { display: block; }
+
+.upload-preview img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.upload-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+
+.upload-preview:hover .upload-preview-overlay { opacity: 1; }
+
+.btn-change-img {
+  padding: 8px 20px;
+  background: var(--cream);
+  color: var(--bg);
+  border: none;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── TAGS INPUT ── */
+.tags-wrap {
+  min-height: 44px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  cursor: text;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tags-wrap:focus-within {
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px var(--sage-dim);
+}
+
+.tag-chip {
+  padding: 3px 10px 3px 12px;
+  background: var(--terra-dim);
+  border: 1px solid rgba(193,122,91,0.25);
+  border-radius: 100px;
+  font-size: 12px;
+  color: #E8AA8A;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.tag-chip-x {
+  cursor: pointer;
+  opacity: 0.6;
+  font-size: 14px;
+  line-height: 1;
+}
+.tag-chip-x:hover { opacity: 1; }
+
+.tags-input {
+  flex: 1;
+  min-width: 80px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--cream);
+  padding: 3px 4px;
+}
+
+.tags-hint {
+  font-size: 11px;
+  color: var(--cream-muted);
+  margin-top: 6px;
+  font-family: var(--font-mono);
+}
+
+/* ── DIFFICULTY TOGGLE ── */
+.difficulty-row {
+  display: flex;
+  gap: 8px;
+}
+
+.diff-btn {
+  flex: 1;
+  padding: 9px 4px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--cream-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.diff-btn.active-facile { background: rgba(122,158,126,0.2); border-color: var(--sage); color: var(--sage); font-weight: 600; }
+.diff-btn.active-moyen { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+.diff-btn.active-difficile { background: rgba(193,122,91,0.2); border-color: var(--terra); color: var(--terra); font-weight: 600; }
+
+/* ── SUBMIT BAR ── */
+.submit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 40px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  gap: 16px;
+}
+
+.submit-info {
+  font-size: 12px;
+  color: var(--cream-muted);
+}
+
+.submit-info strong {
+  color: var(--sage);
+  font-family: var(--font-mono);
+}
+
+.btn-save {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 32px;
+  background: linear-gradient(135deg, var(--sage), #4A7A4E);
+  color: var(--cream);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(74,122,78,0.3);
+}
+
+.btn-save:hover {
+  opacity: 0.9;
+  box-shadow: 0 6px 28px rgba(74,122,78,0.45);
+}
+
+.btn-save:active { transform: scale(0.97); }
+.btn-save:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.btn-reset {
+  padding: 13px 20px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--cream-dim);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-reset:hover { border-color: var(--border2); color: var(--cream); }
+
+/* ── UPLOAD PROGRESS ── */
+.progress-bar-wrap {
+  width: 100%;
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+  display: none;
+}
+
+.progress-bar-wrap.show { display: block; }
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--sage), var(--terra));
+  border-radius: 3px;
+  transition: width 0.3s;
+  width: 0;
+}
+
+/* ════════════════════════════════════════════
+   PREVIEW PANEL (RIGHT)
+════════════════════════════════════════════ */
+.preview-panel {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px;
+  position: sticky;
+  top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+.preview-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cream-muted);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-label::before,
+.preview-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── PHONE FRAME ── */
+.phone-frame {
+  width: 280px;
+  border-radius: 40px;
+  background: #0E0B09;
+  border: 8px solid #2A2420;
+  box-shadow:
+    0 0 0 2px #3A3028,
+    0 40px 80px rgba(0,0,0,0.6),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+  position: relative;
+  overflow: hidden;
+  /* 9:16 ratio */
+  aspect-ratio: 9 / 19.5;
+}
+
+.phone-notch {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 22px;
+  background: #0E0B09;
+  border-radius: 11px;
+  z-index: 10;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.04);
+}
+
+/* ── MOBILE APP SCREEN ── */
+.mobile-screen {
+  position: absolute;
+  inset: 0;
+  background: #FAF7F2;
+  overflow: hidden;
+  font-size: 9px;
+}
+
+/* Hero image */
+.ms-hero {
+  width: 100%;
+  height: 42%;
+  position: relative;
+  background: linear-gradient(135deg, #C17A5B, #5C4033);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ms-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ms-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%);
+}
+
+.ms-hero-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ms-hero-placeholder-icon { font-size: 28px; opacity: 0.5; }
+.ms-hero-placeholder-text { font-size: 9px; color: rgba(255,255,255,0.4); font-family: var(--font-body); }
+
+.ms-hero-back {
+  position: absolute;
+  top: 28px;
+  left: 10px;
+  width: 24px; height: 24px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: white;
+}
+
+.ms-hero-fav {
+  position: absolute;
+  top: 28px;
+  right: 10px;
+  width: 24px; height: 24px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: white;
+}
+
+.ms-hero-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  padding: 3px 8px;
+  background: rgba(122,158,126,0.85);
+  backdrop-filter: blur(4px);
+  border-radius: 100px;
+  font-size: 7.5px;
+  color: white;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+/* Content area */
+.ms-content {
+  height: 58%;
+  background: #FAF7F2;
+  padding: 12px 12px 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ms-content::-webkit-scrollbar { width: 2px; }
+.ms-content::-webkit-scrollbar-thumb { background: rgba(90,79,74,0.2); }
+
+.ms-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2A2420;
+  line-height: 1.3;
+  min-height: 16px;
+}
+
+.ms-title-empty { color: rgba(90,79,74,0.3); font-style: italic; font-weight: 400; }
+
+.ms-meta-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ms-chip {
+  padding: 2px 7px;
+  border-radius: 100px;
+  font-size: 7.5px;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.ms-chip-cat { background: rgba(122,158,126,0.15); color: #4A7A4E; }
+.ms-chip-time { background: rgba(193,122,91,0.12); color: #8B4020; }
+.ms-chip-cal { background: rgba(201,168,76,0.12); color: #7A5818; }
+.ms-chip-diff { background: rgba(90,79,74,0.1); color: #5A4F4A; }
+
+.ms-divider {
+  height: 1px;
+  background: rgba(90,79,74,0.1);
+  flex-shrink: 0;
+}
+
+.ms-section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #5C4033;
+  letter-spacing: 0.5px;
+}
+
+.ms-ingr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ms-ingr-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8px;
+  color: #5A4F4A;
+  font-family: var(--font-body);
+}
+
+.ms-ingr-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #7A9E7E;
+  flex-shrink: 0;
+}
+
+.ms-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ms-step-item {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.ms-step-num {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #7A9E7E;
+  color: white;
+  font-size: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.ms-step-text {
+  font-size: 8px;
+  color: #5A4F4A;
+  line-height: 1.5;
+  flex: 1;
+  font-family: var(--font-body);
+}
+
+.ms-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ms-tag {
+  padding: 2px 8px;
+  background: rgba(193,122,91,0.1);
+  border: 1px solid rgba(193,122,91,0.2);
+  border-radius: 100px;
+  font-size: 7px;
+  color: #8B4020;
+  font-family: var(--font-body);
+}
+
+.ms-cta {
+  margin-top: auto;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #7A9E7E, #4A7A4E);
+  border-radius: 8px;
+  text-align: center;
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  flex-shrink: 0;
+}
+
+/* ── PREVIEW STATS BELOW PHONE ── */
+.preview-stats {
+  margin-top: 24px;
+  width: 280px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.prev-stat {
+  padding: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.prev-stat-val {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--sage);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.prev-stat-label {
+  font-size: 10px;
+  color: var(--cream-muted);
+  font-family: var(--font-mono);
+}
+
+/* ════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+════════════════════════════════════════════ */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 280px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  animation: toastIn 0.3s ease;
+  border: 1px solid transparent;
+  pointer-events: auto;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(20px); }
+}
+
+.toast.out { animation: toastOut 0.3s ease forwards; }
+
+.toast-success { background: rgba(74,122,78,0.95); border-color: rgba(122,158,126,0.4); }
+.toast-error { background: rgba(180,60,60,0.95); border-color: rgba(224,92,92,0.4); }
+.toast-info { background: rgba(40,32,28,0.98); border-color: var(--border2); }
+
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1100px) {
+  .app-main { grid-template-columns: 1fr 320px; }
+  .phone-frame { width: 240px; }
+  .preview-stats { width: 240px; }
+}
+
+@media (max-width: 900px) {
+  .app-main { grid-template-columns: 1fr; }
+  .preview-panel { display: none; }
+}
+
+/* ── FIRESTORE CONFIG WARNING ── */
+.config-warning {
+  margin: 0 40px 24px;
+  padding: 16px 20px;
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: #DEBB6E;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.config-warning code {
+  background: rgba(201,168,76,0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     TOAST CONTAINER
+════════════════════════════════════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">🥗</div>
+      <div class="login-logo-text">Healthy <span>Recipes</span></div>
+    </div>
+    <h1 class="login-title">Espace<br>Administrateur</h1>
+    <p class="login-subtitle">Connexion sécurisée via Firebase Auth</p>
+
+    <div class="field-group">
+      <label class="field-label">Adresse e-mail</label>
+      <input type="email" class="field-input" id="loginEmail" placeholder="admin@tonapp.com" autocomplete="email">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mot de passe</label>
+      <input type="password" class="field-input" id="loginPassword" placeholder="••••••••••" autocomplete="current-password">
+    </div>
+
+    <button class="btn-primary" id="btnLogin" onclick="handleLogin()">
+      Se connecter
+    </button>
+
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     APP
+════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-icon">🥗</div>
+      <div class="header-title">Healthy <em>Recipes</em></div>
+      <span class="header-badge">Admin Panel</span>
+    </div>
+    <div class="header-right">
+      <div class="user-chip">
+        <div class="user-dot"></div>
+        <span id="userEmail">—</span>
+      </div>
+      <button class="btn-logout" onclick="handleLogout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="app-main">
+
+    <!-- ══ FORM PANEL ══ -->
+    <div class="form-panel" id="formPanel">
+
+      <!-- CONFIG WARNING (shown if Firebase not configured) -->
+      <div class="config-warning" id="configWarning" style="display:none;">
+        ⚠️ <div>Configure tes clés Firebase dans le bloc <code>FIREBASE_CONFIG</code> en bas du fichier JS pour activer la sauvegarde et l'upload photo.</div>
+      </div>
+
+      <form id="recipeForm" onsubmit="return false;">
+
+        <!-- ─── SECTION 1 : IDENTITÉ ─── -->
+        <div class="form-section">
+          <div class="form-section-title">Identité de la recette</div>
+          <div class="form-grid col1" style="margin-bottom:16px;">
+            <div class="form-group">
+              <label for="fTitle">Titre de la recette <span class="required">*</span></label>
+              <input type="text" id="fTitle" placeholder="Ex : Bowl Buddha au Saumon Teriyaki" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fCategory">Catégorie <span class="required">*</span></label>
+              <select id="fCategory" onchange="updatePreview()">
+                <option value="">— Choisir —</option>
+                <option value="Petit-déjeuner">🌅 Petit-déjeuner</option>
+                <option value="Déjeuner">☀️ Déjeuner</option>
+                <option value="Dîner">🌙 Dîner</option>
+                <option value="Collation">🍎 Collation</option>
+                <option value="Dessert sain">🍓 Dessert sain</option>
+                <option value="Smoothie">🥤 Smoothie</option>
+                <option value="Soupe">🍲 Soupe</option>
+                <option value="Salade">🥗 Salade</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fDiet">Régime alimentaire</label>
+              <select id="fDiet" onchange="updatePreview()">
+                <option value="">— Aucun spécifique —</option>
+                <option value="Vegan">🌿 Vegan</option>
+                <option value="Végétarien">🥕 Végétarien</option>
+                <option value="Keto">🥑 Keto</option>
+                <option value="Paléo">🍖 Paléo</option>
+                <option value="Sans gluten">🌾 Sans gluten</option>
+                <option value="Sans lactose">🥛 Sans lactose</option>
+                <option value="Haute protéine">💪 Haute protéine</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid col1" style="margin-top:16px;">
+            <div class="form-group">
+              <label for="fDescription">Description courte</label>
+              <textarea id="fDescription" placeholder="Un bowl savoureux et nutritif, parfait après le sport..." oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── SECTION 2 : CHIFFRES CLÉS ─── -->
+        <div class="form-section">
+          <div class="form-section-title">Chiffres clés</div>
+          <div class="form-grid col3">
+            <div class="form-group">
+              <label for="fPrepTime">Temps de préparation <span class="required">*</span></label>
+              <div class="input-unit-wrap">
+                <input type="number" id="fPrepTime" placeholder="20" min="1" oninput="updatePreview()">
+                <span class="input-unit">min</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fCookTime">Temps de cuisson</label>
+              <div class="input-unit-wrap">
+                <input type="number" id="fCookTime" placeholder="0" min="0" oninput="updatePreview()">
+                <span class="input-unit">min</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fServings">Portions</label>
+              <div class="input-unit-wrap">
+                <input type="number" id="fServings" placeholder="2" min="1" max="20" oninput="updatePreview()">
+                <span class="input-unit">pers.</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fCalories">Calories (par portion) <span class="required">*</span></label>
+              <div class="input-unit-wrap">
+                <input type="number" id="fCalories" placeholder="480" oninput="updatePreview()">
+                <span class="input-unit">kcal</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fProteins">Protéines</label>
+              <div class="input-unit-wrap">
+                <input type="number" id="fProteins" placeholder="32" oninput="updatePreview()">
+                <span class="input-unit">g</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fCarbs">Glucides</label>
+              <div class="input-unit-wrap">
+                <input type="number" id="fCarbs" placeholder="45" oninput="updatePreview()">
+                <span class="input-unit">g</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-grid" style="margin-top:16px;">
+            <div class="form-group">
+              <label for="fFats">Lipides</label>
+              <div class="input-unit-wrap">
+                <input type="number" id="fFats" placeholder="18" oninput="updatePreview()">
+                <span class="input-unit">g</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Difficulté</label>
+              <div class="difficulty-row">
+                <button type="button" class="diff-btn" data-diff="Facile" onclick="setDifficulty(this)">Facile</button>
+                <button type="button" class="diff-btn" data-diff="Moyen" onclick="setDifficulty(this)">Moyen</button>
+                <button type="button" class="diff-btn" data-diff="Difficile" onclick="setDifficulty(this)">Difficile</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── SECTION 3 : IMAGE ─── -->
+        <div class="form-section">
+          <div class="form-section-title">Photo du plat</div>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fImage" accept="image/jpeg,image/png,image/webp" onchange="handleImageChange(this)">
+            <div class="upload-icon">📷</div>
+            <div class="upload-title">Glisser une photo ou cliquer</div>
+            <div class="upload-sub">JPG, PNG, WebP — Recommandé : 1080×1920px (9:16)</div>
+          </div>
+          <div class="upload-preview" id="uploadPreview">
+            <img id="previewImgEl" src="" alt="Preview">
+            <div class="upload-preview-overlay" onclick="document.getElementById('fImage').click()">
+              <button class="btn-change-img" type="button">Changer l'image</button>
+            </div>
+          </div>
+          <div class="progress-bar-wrap" id="uploadProgress" style="margin-top:8px;">
+            <div class="progress-bar-fill" id="uploadProgressFill"></div>
+          </div>
+        </div>
+
+        <!-- ─── SECTION 4 : INGRÉDIENTS ─── -->
+        <div class="form-section">
+          <div class="form-section-title">Ingrédients</div>
+          <div class="dynamic-list" id="ingredientsList">
+            <!-- rows injected by JS -->
+          </div>
+          <button type="button" class="btn-add" onclick="addIngredient()">
+            <span class="btn-add-icon">＋</span>
+            Ajouter un ingrédient
+          </button>
+        </div>
+
+        <!-- ─── SECTION 5 : ÉTAPES ─── -->
+        <div class="form-section">
+          <div class="form-section-title">Étapes de préparation</div>
+          <div class="dynamic-list" id="stepsList">
+            <!-- rows injected by JS -->
+          </div>
+          <button type="button" class="btn-add" onclick="addStep()">
+            <span class="btn-add-icon">＋</span>
+            Ajouter une étape
+          </button>
+        </div>
+
+        <!-- ─── SECTION 6 : TAGS ─── -->
+        <div class="form-section">
+          <div class="form-section-title">Tags & mots-clés</div>
+          <div class="form-group">
+            <label>Tags</label>
+            <div class="tags-wrap" id="tagsWrap" onclick="document.getElementById('tagInput').focus()">
+              <input type="text" id="tagInput" class="tags-input" placeholder="ex: rapide…" onkeydown="handleTagInput(event)">
+            </div>
+            <div class="tags-hint">Appuyer sur ↵ Entrée ou , pour valider chaque tag</div>
+          </div>
+          <div class="form-group" style="margin-top:16px;">
+            <label for="fPremium">Statut de la recette</label>
+            <select id="fPremium">
+              <option value="free">🔓 Gratuite (accessible à tous)</option>
+              <option value="premium">⭐ Premium (déblocable via pub ou abo)</option>
+            </select>
+          </div>
+        </div>
+
+      </form>
+    </div><!-- /form-panel -->
+
+    <!-- ══ PREVIEW PANEL ══ -->
+    <div class="preview-panel">
+      <div class="preview-label">Aperçu mobile live</div>
+
+      <!-- PHONE FRAME -->
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="mobile-screen" id="mobileScreen">
+
+          <!-- Hero -->
+          <div class="ms-hero" id="msHero">
+            <div class="ms-hero-placeholder" id="msHeroPlaceholder">
+              <div class="ms-hero-placeholder-icon">🍽️</div>
+              <div class="ms-hero-placeholder-text">Photo du plat</div>
+            </div>
+            <img id="msHeroImg" src="" alt="" style="display:none;">
+            <div class="ms-hero-overlay"></div>
+            <div class="ms-hero-back">‹</div>
+            <div class="ms-hero-fav">♡</div>
+            <div class="ms-hero-badge" id="msBadge" style="display:none;">—</div>
+          </div>
+
+          <!-- Content -->
+          <div class="ms-content">
+            <div class="ms-title ms-title-empty" id="msTitle">Titre de la recette…</div>
+
+            <div class="ms-meta-row" id="msMetaRow">
+              <span class="ms-chip ms-chip-cat" id="msChipCat" style="display:none;">—</span>
+              <span class="ms-chip ms-chip-time" id="msChipTime" style="display:none;">—</span>
+              <span class="ms-chip ms-chip-cal" id="msChipCal" style="display:none;">—</span>
+              <span class="ms-chip ms-chip-diff" id="msChipDiff" style="display:none;">—</span>
+            </div>
+
+            <div class="ms-divider"></div>
+
+            <div id="msIngrSection" style="display:none;">
+              <div class="ms-section-title" style="margin-bottom:5px;">🛒 Ingrédients</div>
+              <div class="ms-ingr-list" id="msIngrList"></div>
+            </div>
+
+            <div id="msStepsSection" style="display:none;">
+              <div class="ms-section-title" style="margin-bottom:5px;">👨‍🍳 Préparation</div>
+              <div class="ms-steps-list" id="msStepsList"></div>
+            </div>
+
+            <div class="ms-tags-row" id="msTagsRow"></div>
+
+            <div class="ms-cta">🍳 Démarrer la cuisine</div>
+          </div>
+
+        </div>
+      </div><!-- /phone-frame -->
+
+      <!-- Stats -->
+      <div class="preview-stats">
+        <div class="prev-stat">
+          <div class="prev-stat-val" id="statIngr">0</div>
+          <div class="prev-stat-label">Ingrédients</div>
+        </div>
+        <div class="prev-stat">
+          <div class="prev-stat-val" id="statSteps">0</div>
+          <div class="prev-stat-label">Étapes</div>
+        </div>
+        <div class="prev-stat">
+          <div class="prev-stat-val" id="statTime">—</div>
+          <div class="prev-stat-label">Temps total</div>
+        </div>
+        <div class="prev-stat">
+          <div class="prev-stat-val" id="statKcal">—</div>
+          <div class="prev-stat-label">Kcal / portion</div>
+        </div>
+      </div>
+    </div><!-- /preview-panel -->
+
+  </div><!-- /app-main -->
+
+  <!-- SUBMIT BAR -->
+  <div class="submit-bar">
+    <div class="submit-info">
+      Sauvegarde dans <strong>Firebase Firestore</strong> · Photo dans <strong>Firebase Storage</strong>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <button type="button" class="btn-reset" onclick="resetForm()">Réinitialiser</button>
+      <button type="button" class="btn-save" id="btnSave" onclick="saveRecipe()">
+        <span>💾</span>
+        Sauvegarder la recette
+      </button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script>
+/* ══════════════════════════════════════════
+   ⚙️  FIREBASE CONFIGURATION
+   Remplace ces valeurs par celles de ta
+   console Firebase → Paramètres du projet
+   → Tes applications → SDK Config
+══════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey:            "REMPLACE_PAR_TON_API_KEY",
+  authDomain:        "ton-projet.firebaseapp.com",
+  projectId:         "ton-projet-id",
+  storageBucket:     "ton-projet-id.appspot.com",
+  messagingSenderId: "1234567890",
+  appId:             "1:1234567890:web:abc123"
+};
+
+/* ══════════════════════════════════════════
+   FIREBASE INIT
+══════════════════════════════════════════ */
+let db, storage, auth;
+let firebaseReady = false;
+
+function initFirebase() {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    db      = firebase.firestore();
+    storage = firebase.storage();
+    auth    = firebase.auth();
+    firebaseReady = (FIREBASE_CONFIG.apiKey !== "REMPLACE_PAR_TON_API_KEY");
+
+    if (!firebaseReady) {
+      document.getElementById('configWarning').style.display = 'flex';
+    }
+
+    // Auth state listener
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        showApp(user);
+      } else {
+        showLogin();
+      }
+    });
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    document.getElementById('configWarning').style.display = 'flex';
+  }
+}
+
+/* ══════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════ */
+function showLogin() {
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app').classList.remove('visible');
+}
+
+function showApp(user) {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('userEmail').textContent = user.email;
+  initForm();
+}
+
+async function handleLogin() {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  const btn      = document.getElementById('btnLogin');
+
+  if (!email || !password) {
+    showLoginError('Veuillez renseigner l\'email et le mot de passe.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Connexion…';
+  errEl.classList.remove('show');
+
+  if (!firebaseReady) {
+    // Demo mode: bypass auth for testing without Firebase config
+    showApp({ email: email });
+    btn.disabled = false;
+    btn.textContent = 'Se connecter';
+    return;
+  }
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch(e) {
+    const msgs = {
+      'auth/user-not-found':   'Aucun compte avec cet email.',
+      'auth/wrong-password':   'Mot de passe incorrect.',
+      'auth/invalid-email':    'Email invalide.',
+      'auth/too-many-requests':'Trop de tentatives. Réessaie plus tard.',
+    };
+    showLoginError(msgs[e.code] || 'Erreur : ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Se connecter';
+  }
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function handleLogout() {
+  if (firebaseReady) {
+    auth.signOut();
+  } else {
+    showLogin();
+  }
+}
+
+// Enter key on login
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loginPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+  });
+  initFirebase();
+});
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+let tags = [];
+let selectedDifficulty = '';
+let imageFile = null;
+let imageLocalUrl = '';
+let ingredientCount = 0;
+let stepCount = 0;
+
+/* ══════════════════════════════════════════
+   FORM INIT
+══════════════════════════════════════════ */
+function initForm() {
+  // Seed with 3 ingredient rows + 2 step rows
+  addIngredient(); addIngredient(); addIngredient();
+  addStep(); addStep();
+}
+
+/* ══════════════════════════════════════════
+   DYNAMIC INGREDIENTS
+══════════════════════════════════════════ */
+function addIngredient(value = '') {
+  ingredientCount++;
+  const list = document.getElementById('ingredientsList');
+  const id = `ingr-${Date.now()}-${ingredientCount}`;
+  const div = document.createElement('div');
+  div.className = 'dynamic-row';
+  div.id = id;
+  div.innerHTML = `
+    <span class="row-num">${list.children.length + 1}</span>
+    <input type="text" placeholder="Ex : 150g filet de saumon" value="${escHtml(value)}"
+           oninput="updatePreview()" style="flex:1;">
+    <button type="button" class="btn-remove" onclick="removeRow('${id}', 'ingredientsList')" title="Supprimer">×</button>
+  `;
+  list.appendChild(div);
+  updatePreview();
+}
+
+function addStep(value = '') {
+  stepCount++;
+  const list = document.getElementById('stepsList');
+  const num = list.children.length + 1;
+  const id = `step-${Date.now()}-${stepCount}`;
+  const div = document.createElement('div');
+  div.className = 'dynamic-row';
+  div.id = id;
+  div.innerHTML = `
+    <span class="row-num">${num}</span>
+    <textarea placeholder="Décris cette étape…" rows="2"
+              oninput="updatePreview()" style="flex:1;">${escHtml(value)}</textarea>
+    <button type="button" class="btn-remove" onclick="removeRow('${id}', 'stepsList')" title="Supprimer">×</button>
+  `;
+  list.appendChild(div);
+  updatePreview();
+}
+
+function removeRow(id, listId) {
+  const row = document.getElementById(id);
+  if (row) {
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(-10px)';
+    row.style.transition = 'opacity 0.2s, transform 0.2s';
+    setTimeout(() => {
+      row.remove();
+      renumberRows(listId);
+      updatePreview();
+    }, 200);
+  }
+}
+
+function renumberRows(listId) {
+  const rows = document.getElementById(listId).querySelectorAll('.row-num');
+  rows.forEach((el, i) => el.textContent = i + 1);
+}
+
+function getIngredients() {
+  return Array.from(document.getElementById('ingredientsList').querySelectorAll('input[type="text"]'))
+    .map(i => i.value.trim())
+    .filter(Boolean);
+}
+
+function getSteps() {
+  return Array.from(document.getElementById('stepsList').querySelectorAll('textarea'))
+    .map(t => t.value.trim())
+    .filter(Boolean);
+}
+
+/* ══════════════════════════════════════════
+   TAGS
+══════════════════════════════════════════ */
+function handleTagInput(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.replace(',','').trim();
+    if (val && !tags.includes(val) && tags.length < 10) {
+      addTag(val);
+      e.target.value = '';
+    }
+  }
+  if (e.key === 'Backspace' && e.target.value === '' && tags.length) {
+    removeTag(tags[tags.length - 1]);
+  }
+}
+
+function addTag(val) {
+  tags.push(val);
+  renderTags();
+  updatePreview();
+}
+
+function removeTag(val) {
+  tags = tags.filter(t => t !== val);
+  renderTags();
+  updatePreview();
+}
+
+function renderTags() {
+  const wrap = document.getElementById('tagsWrap');
+  const input = document.getElementById('tagInput');
+  // Remove existing chips
+  wrap.querySelectorAll('.tag-chip').forEach(c => c.remove());
+  // Re-add chips before input
+  tags.forEach(t => {
+    const chip = document.createElement('div');
+    chip.className = 'tag-chip';
+    chip.innerHTML = `${escHtml(t)} <span class="tag-chip-x" onclick="removeTag('${escHtml(t)}')">×</span>`;
+    wrap.insertBefore(chip, input);
+  });
+}
+
+/* ══════════════════════════════════════════
+   DIFFICULTY
+══════════════════════════════════════════ */
+function setDifficulty(btn) {
+  selectedDifficulty = btn.dataset.diff;
+  document.querySelectorAll('.diff-btn').forEach(b => {
+    b.className = 'diff-btn';
+  });
+  btn.classList.add(`active-${selectedDifficulty.toLowerCase()}`);
+  updatePreview();
+}
+
+/* ══════════════════════════════════════════
+   IMAGE HANDLING
+══════════════════════════════════════════ */
+function handleImageChange(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('Image trop lourde (max 10MB)', 'error');
+    return;
+  }
+
+  imageFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    imageLocalUrl = e.target.result;
+    // Show preview in upload zone
+    document.getElementById('uploadZone').style.display = 'none';
+    const prev = document.getElementById('uploadPreview');
+    document.getElementById('previewImgEl').src = imageLocalUrl;
+    prev.classList.add('show');
+    // Update phone preview
+    updatePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+// Drag & Drop
+const uploadZone = document.getElementById ? document.getElementById('uploadZone') : null;
+if (uploadZone) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const uz = document.getElementById('uploadZone');
+    uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('dragover'); });
+    uz.addEventListener('dragleave', () => uz.classList.remove('dragover'));
+    uz.addEventListener('drop', e => {
+      e.preventDefault();
+      uz.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files[0]) {
+        document.getElementById('fImage').files = files;
+        handleImageChange(document.getElementById('fImage'));
+      }
+    });
+  });
+}
+
+/* ══════════════════════════════════════════
+   LIVE PREVIEW UPDATE
+══════════════════════════════════════════ */
+function updatePreview() {
+  const title    = v('fTitle');
+  const cat      = v('fCategory');
+  const prepTime = v('fPrepTime');
+  const cookTime = v('fCookTime');
+  const cal      = v('fCalories');
+  const ingrs    = getIngredients();
+  const steps    = getSteps();
+
+  // Title
+  const titleEl = document.getElementById('msTitle');
+  if (title) {
+    titleEl.textContent = title;
+    titleEl.classList.remove('ms-title-empty');
+  } else {
+    titleEl.textContent = 'Titre de la recette…';
+    titleEl.classList.add('ms-title-empty');
+  }
+
+  // Hero image
+  const msHeroImg  = document.getElementById('msHeroImg');
+  const msHeroPlac = document.getElementById('msHeroPlaceholder');
+  if (imageLocalUrl) {
+    msHeroImg.src = imageLocalUrl;
+    msHeroImg.style.display = 'block';
+    msHeroPlac.style.display = 'none';
+  } else {
+    msHeroImg.style.display = 'none';
+    msHeroPlac.style.display = 'flex';
+  }
+
+  // Badge category
+  const badge = document.getElementById('msBadge');
+  if (cat) { badge.textContent = cat; badge.style.display = 'block'; }
+  else { badge.style.display = 'none'; }
+
+  // Chips
+  setChip('msChipCat', cat, cat);
+  const totalTime = (parseInt(prepTime)||0) + (parseInt(cookTime)||0);
+  setChip('msChipTime', totalTime > 0 ? `⏱ ${totalTime} min` : '', totalTime > 0);
+  setChip('msChipCal', cal ? `🔥 ${cal} kcal` : '', !!cal);
+  setChip('msChipDiff', selectedDifficulty, !!selectedDifficulty);
+
+  // Ingredients
+  const ingrSec = document.getElementById('msIngrSection');
+  const ingrList = document.getElementById('msIngrList');
+  if (ingrs.length) {
+    ingrSec.style.display = 'block';
+    ingrList.innerHTML = ingrs.slice(0,8).map(i =>
+      `<div class="ms-ingr-item"><div class="ms-ingr-dot"></div>${escHtml(i)}</div>`
+    ).join('');
+    if (ingrs.length > 8) {
+      ingrList.innerHTML += `<div class="ms-ingr-item" style="opacity:0.5;font-style:italic;">+${ingrs.length-8} autres…</div>`;
+    }
+  } else {
+    ingrSec.style.display = 'none';
+  }
+
+  // Steps
+  const stepsSec = document.getElementById('msStepsSection');
+  const stepsList = document.getElementById('msStepsList');
+  if (steps.length) {
+    stepsSec.style.display = 'block';
+    stepsList.innerHTML = steps.slice(0,4).map((s, i) =>
+      `<div class="ms-step-item">
+        <div class="ms-step-num">${i+1}</div>
+        <div class="ms-step-text">${escHtml(s.substring(0,80))}${s.length>80?'…':''}</div>
+      </div>`
+    ).join('');
+  } else {
+    stepsSec.style.display = 'none';
+  }
+
+  // Tags
+  const tagsRow = document.getElementById('msTagsRow');
+  tagsRow.innerHTML = tags.map(t => `<span class="ms-tag">${escHtml(t)}</span>`).join('');
+
+  // Stats
+  document.getElementById('statIngr').textContent  = ingrs.length;
+  document.getElementById('statSteps').textContent = steps.length;
+  document.getElementById('statTime').textContent  = totalTime ? `${totalTime}'` : '—';
+  document.getElementById('statKcal').textContent  = cal || '—';
+}
+
+function setChip(id, text, show) {
+  const el = document.getElementById(id);
+  if (show && text) { el.textContent = text; el.style.display = 'inline-flex'; }
+  else { el.style.display = 'none'; }
+}
+
+function v(id) { return (document.getElementById(id)?.value||'').trim(); }
+
+/* ══════════════════════════════════════════
+   VALIDATION
+══════════════════════════════════════════ */
+function validateForm() {
+  const required = [
+    { id: 'fTitle',    label: 'Titre de la recette' },
+    { id: 'fCategory', label: 'Catégorie' },
+    { id: 'fPrepTime', label: 'Temps de préparation' },
+    { id: 'fCalories', label: 'Calories' },
+  ];
+
+  for (const f of required) {
+    if (!v(f.id)) {
+      showToast(`Champ obligatoire manquant : ${f.label}`, 'error');
+      document.getElementById(f.id)?.focus();
+      return false;
+    }
+  }
+
+  if (getIngredients().length === 0) {
+    showToast('Ajoute au moins un ingrédient.', 'error');
+    return false;
+  }
+
+  if (getSteps().length === 0) {
+    showToast('Ajoute au moins une étape de préparation.', 'error');
+    return false;
+  }
+
+  return true;
+}
+
+/* ══════════════════════════════════════════
+   SAVE RECIPE
+══════════════════════════════════════════ */
+async function saveRecipe() {
+  if (!validateForm()) return;
+
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Sauvegarde…';
+
+  try {
+    let photoUrl = '';
+
+    // 1. Upload image if present
+    if (imageFile && firebaseReady) {
+      showToast('Upload de la photo…', 'info');
+      photoUrl = await uploadImage(imageFile);
+    } else if (imageLocalUrl && !firebaseReady) {
+      photoUrl = ''; // No Firebase, skip
+    }
+
+    // 2. Build recipe object
+    const recipe = {
+      title:       v('fTitle'),
+      category:    v('fCategory'),
+      diet:        v('fDiet'),
+      description: v('fDescription'),
+      prepTime:    parseInt(v('fPrepTime')) || 0,
+      cookTime:    parseInt(v('fCookTime')) || 0,
+      servings:    parseInt(v('fServings')) || 1,
+      calories:    parseInt(v('fCalories')) || 0,
+      proteins:    parseFloat(v('fProteins')) || 0,
+      carbs:       parseFloat(v('fCarbs')) || 0,
+      fats:        parseFloat(v('fFats')) || 0,
+      difficulty:  selectedDifficulty || 'Facile',
+      ingredients: getIngredients(),
+      steps:       getSteps(),
+      tags:        [...tags],
+      isPremium:   v('fPremium') === 'premium',
+      photoUrl:    photoUrl,
+      createdAt:   new Date().toISOString(),
+      updatedAt:   new Date().toISOString(),
+      rating:      0,
+      ratingCount: 0,
+    };
+
+    // 3. Save to Firestore (or simulate)
+    if (firebaseReady) {
+      const docRef = await db.collection('recipes').add(recipe);
+      showToast(`✅ Recette sauvegardée ! ID : ${docRef.id}`, 'success');
+    } else {
+      // DEMO MODE: log to console
+      console.log('📋 Recette (mode démo):', JSON.stringify(recipe, null, 2));
+      showToast('✅ Recette prête ! (mode démo — configure Firebase pour sauvegarder)', 'success');
+    }
+
+    // 4. Optionally reset
+    setTimeout(() => {
+      if (confirm('Recette sauvegardée ! Réinitialiser le formulaire pour une nouvelle saisie ?')) {
+        resetForm();
+      }
+    }, 500);
+
+  } catch (err) {
+    console.error(err);
+    showToast('Erreur : ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>💾</span> Sauvegarder la recette';
+  }
+}
+
+async function uploadImage(file) {
+  return new Promise((resolve, reject) => {
+    const ext       = file.name.split('.').pop();
+    const fileName  = `recipes/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const storageRef = storage.ref(fileName);
+    const uploadTask = storageRef.put(file);
+
+    const progressWrap = document.getElementById('uploadProgress');
+    const progressFill = document.getElementById('uploadProgressFill');
+    progressWrap.classList.add('show');
+
+    uploadTask.on('state_changed',
+      snapshot => {
+        const pct = (snapshot.bytesTransferred / snapshot.totalBytes * 100).toFixed(0);
+        progressFill.style.width = pct + '%';
+      },
+      error => {
+        progressWrap.classList.remove('show');
+        reject(error);
+      },
+      async () => {
+        progressWrap.classList.remove('show');
+        progressFill.style.width = '0';
+        const url = await uploadTask.snapshot.ref.getDownloadURL();
+        resolve(url);
+      }
+    );
+  });
+}
+
+/* ══════════════════════════════════════════
+   RESET
+══════════════════════════════════════════ */
+function resetForm() {
+  // Form fields
+  ['fTitle','fCategory','fDiet','fDescription',
+   'fPrepTime','fCookTime','fServings','fCalories',
+   'fProteins','fCarbs','fFats','fPremium'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  // Difficulty
+  selectedDifficulty = '';
+  document.querySelectorAll('.diff-btn').forEach(b => b.className = 'diff-btn');
+
+  // Image
+  imageFile = null;
+  imageLocalUrl = '';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('uploadPreview').classList.remove('show');
+  document.getElementById('fImage').value = '';
+
+  // Ingredients & steps
+  document.getElementById('ingredientsList').innerHTML = '';
+  document.getElementById('stepsList').innerHTML = '';
+  addIngredient(); addIngredient(); addIngredient();
+  addStep(); addStep();
+
+  // Tags
+  tags = [];
+  renderTags();
+
+  updatePreview();
+  showToast('Formulaire réinitialisé', 'info');
+}
+
+/* ══════════════════════════════════════════
+   TOAST SYSTEM
+══════════════════════════════════════════ */
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  toast.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('out');
+    setTimeout(() => toast.remove(), 300);
+  }, type === 'success' ? 4000 : type === 'error' ? 5000 : 3000);
+}
+
+/* ══════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════ */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
+
