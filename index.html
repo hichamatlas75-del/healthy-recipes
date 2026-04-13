@@ -216,7 +216,8 @@ body {
 #app {
   display: none;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #app.visible { display: flex; }
@@ -318,6 +319,18 @@ body {
   gap: 0;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+#app {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#app.visible {
+  display: flex !important;
 }
 
 /* ════════════════════════════════════════════
@@ -1227,11 +1240,15 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
 ════════════════════════════════════════════ */
 #managePanel {
   display: none;
+  flex-direction: column;
   flex: 1;
   overflow: hidden;
+  background: var(--bg);
 }
 
-#managePanel.active { display: flex; flex-direction: column; }
+#managePanel.active {
+  display: flex !important;
+}
 
 .manage-toolbar {
   padding: 20px 32px;
@@ -1289,10 +1306,11 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
 .recipes-list {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 32px;
+  padding: 24px 32px 80px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
 }
 
 .recipe-row {
@@ -2745,12 +2763,24 @@ function escHtml(str) {
    TAB SWITCHING
 ══════════════════════════════════════════ */
 function switchTab(tab) {
-  const isSaisie = tab === 'saisie';
-  document.getElementById('mainSaisie').style.display  = isSaisie ? 'grid' : 'none';
-  document.getElementById('managePanel').classList.toggle('active', !isSaisie);
+  const isSaisie  = tab === 'saisie';
+  const mainEl    = document.getElementById('mainSaisie');
+  const manageEl  = document.getElementById('managePanel');
+  const submitBar = document.querySelector('.submit-bar');
+  const previewP  = document.querySelector('.preview-panel');
+
+  if (isSaisie) {
+    mainEl.style.display   = 'grid';
+    manageEl.classList.remove('active');
+    if (submitBar) submitBar.style.display = '';
+  } else {
+    mainEl.style.display   = 'none';
+    manageEl.classList.add('active');
+    if (submitBar) submitBar.style.display = 'none';
+    loadRecipes();
+  }
   document.getElementById('tabSaisie').classList.toggle('active', isSaisie);
   document.getElementById('tabManage').classList.toggle('active', !isSaisie);
-  if (!isSaisie) loadRecipes();
 }
 
 /* ══════════════════════════════════════════
@@ -2760,18 +2790,23 @@ let allRecipes = [];
 
 async function loadRecipes() {
   const list = document.getElementById('recipesList');
-  list.innerHTML = '<div class="recipes-loading"><div class="spinner" style="width:20px;height:20px;border-width:2px;"></div> Chargement…</div>';
+  list.innerHTML = '<div class="recipes-loading"><div class="spinner" style="width:20px;height:20px;border-width:2px;"></div> Chargement des recettes…</div>';
 
   try {
-    const snap = await db.collection('recipes').orderBy('title').get();
+    const snap = await db.collection('recipes').get();
     allRecipes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort client-side to avoid index requirement
+    allRecipes.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr'));
+    document.getElementById('recipeCountDisplay').textContent = allRecipes.length;
     filterRecipes();
+    showToast(allRecipes.length + ' recettes chargées', 'success');
   } catch(e) {
-    list.innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">⚠️</div>
-      <div class="empty-state-text">Erreur de chargement</div>
-      <div class="empty-state-sub">${e.message}</div>
-    </div>`;
+    console.error('Load error:', e);
+    list.innerHTML = '<div class="empty-state">' +
+      '<div class="empty-state-icon">⚠️</div>' +
+      '<div class="empty-state-text">Erreur : ' + e.message + '</div>' +
+      '<div class="empty-state-sub">Vérifiez les règles Firestore</div>' +
+      '</div>';
   }
 }
 
