@@ -1249,9 +1249,14 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
 #managePanel {
   display: none;
   flex-direction: column;
-  flex: 1;
-  overflow: hidden;
+  position: fixed;
+  top: 88px; /* header(52) + tabs(36) */
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: var(--bg);
+  z-index: 50;
+  overflow: hidden;
 }
 
 #managePanel.active {
@@ -1327,11 +1332,11 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
 .recipes-list {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 12px 24px;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 12px 80px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 0;
 }
 
 .recipe-row {
@@ -2792,16 +2797,20 @@ function switchTab(tab) {
   const mainEl    = document.getElementById('mainSaisie');
   const manageEl  = document.getElementById('managePanel');
   const submitBar = document.querySelector('.submit-bar');
-  const previewP  = document.querySelector('.preview-panel');
 
   if (isSaisie) {
-    mainEl.style.display   = 'grid';
+    mainEl.style.display = 'grid';
     manageEl.classList.remove('active');
     if (submitBar) submitBar.style.display = '';
   } else {
-    mainEl.style.display   = 'none';
-    manageEl.classList.add('active');
+    mainEl.style.display = 'none';
     if (submitBar) submitBar.style.display = 'none';
+    // Calculate exact top offset
+    const header = document.querySelector('.app-header');
+    const tabs   = document.querySelector('.tabs-nav');
+    const top = (header ? header.offsetHeight : 52) + (tabs ? tabs.offsetHeight : 36);
+    manageEl.style.top = top + 'px';
+    manageEl.classList.add('active');
     loadRecipes();
   }
   document.getElementById('tabSaisie').classList.toggle('active', isSaisie);
