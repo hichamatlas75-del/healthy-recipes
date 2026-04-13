@@ -1329,6 +1329,27 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
 
 .manage-count span { color: var(--sage); font-weight: 600; }
 
+.btn-delete-all {
+  padding: 7px 12px;
+  background: rgba(224,92,92,0.08);
+  border: 1px solid rgba(224,92,92,0.25);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: rgba(224,92,92,0.8);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-delete-all:hover {
+  background: rgba(224,92,92,0.18);
+  border-color: var(--red);
+  color: var(--red);
+}
+
 .recipes-list {
   flex: 1;
   overflow-y: auto;
@@ -1734,13 +1755,9 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
               <select id="fCategory" onchange="updatePreview()">
                 <option value="">— Choisir —</option>
                 <option value="Petit-déjeuner">🌅 Petit-déjeuner</option>
-                <option value="Déjeuner">☀️ Déjeuner</option>
-                <option value="Dîner">🌙 Dîner</option>
-                <option value="Collation">🍎 Collation</option>
-                <option value="Dessert sain">🍓 Dessert sain</option>
-                <option value="Smoothie">🥤 Smoothie</option>
-                <option value="Soupe">🍲 Soupe</option>
-                <option value="Salade">🥗 Salade</option>
+                <option value="Plat principal">🍽️ Plat principal</option>
+                <option value="Dessert">🍓 Dessert</option>
+                <option value="Snack">🍎 Snack</option>
               </select>
             </div>
             <div class="form-group">
@@ -1751,9 +1768,10 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
                 <option value="Végétarien">🥕 Végétarien</option>
                 <option value="Keto">🥑 Keto</option>
                 <option value="Paléo">🍖 Paléo</option>
-                <option value="Sans gluten">🌾 Sans gluten</option>
-                <option value="Sans lactose">🥛 Sans lactose</option>
-                <option value="Haute protéine">💪 Haute protéine</option>
+                <option value="Sans Gluten">🌾 Sans Gluten</option>
+                <option value="Sans Lactose">🥛 Sans Lactose</option>
+                <option value="Haute Protéine">💪 Haute Protéine</option>
+                <option value="Détox">🍃 Détox</option>
               </select>
             </div>
           </div>
@@ -2004,13 +2022,21 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
       <div class="manage-toolbar-row2">
         <select class="manage-filter" id="manageFilter" onchange="filterRecipes()">
           <option value="">Toutes catégories</option>
-          <option value="Petit-déjeuner">🌅 Petit-déj.</option>
-          <option value="Déjeuner">☀️ Déjeuner</option>
-          <option value="Dîner">🌙 Dîner</option>
-          <option value="Collation">🍎 Collation</option>
-          <option value="Smoothie">🥤 Smoothie</option>
-          <option value="Soupe">🍲 Soupe</option>
-          <option value="Salade">🥗 Salade</option>
+          <option value="Petit-déjeuner">🌅 Petit-déjeuner</option>
+          <option value="Plat principal">🍽️ Plat principal</option>
+          <option value="Dessert">🍓 Dessert</option>
+          <option value="Snack">🍎 Snack</option>
+        </select>
+        <select class="manage-filter" id="manageDiet" onchange="filterRecipes()">
+          <option value="">Tous régimes</option>
+          <option value="Vegan">🌿 Vegan</option>
+          <option value="Végétarien">🥕 Végétarien</option>
+          <option value="Keto">🥑 Keto</option>
+          <option value="Paléo">🍖 Paléo</option>
+          <option value="Sans Gluten">🌾 Sans Gluten</option>
+          <option value="Sans Lactose">🥛 Sans Lactose</option>
+          <option value="Haute Protéine">💪 Haute Protéine</option>
+          <option value="Détox">🍃 Détox</option>
         </select>
         <select class="manage-filter" id="managePremium" onchange="filterRecipes()">
           <option value="">Toutes</option>
@@ -2020,6 +2046,9 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
         <span class="manage-count">
           <span id="recipeCountDisplay">0</span> recettes
         </span>
+        <button class="btn-delete-all" onclick="openDeleteAllModal()" title="Supprimer toutes les recettes filtrées">
+          🗑️ Tout supprimer
+        </button>
       </div>
     </div>
 
@@ -2048,28 +2077,26 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
         </div>
         <div class="modal-grid">
           <div class="modal-field">
-            <label class="modal-label">Catégorie</label>
+            <label class="modal-label">Catégorie (meal_type)</label>
             <select class="modal-select" id="editCategory">
               <option value="Petit-déjeuner">🌅 Petit-déjeuner</option>
-              <option value="Déjeuner">☀️ Déjeuner</option>
-              <option value="Dîner">🌙 Dîner</option>
-              <option value="Collation">🍎 Collation</option>
-              <option value="Smoothie">🥤 Smoothie</option>
-              <option value="Soupe">🍲 Soupe</option>
-              <option value="Salade">🥗 Salade</option>
+              <option value="Plat principal">🍽️ Plat principal</option>
+              <option value="Dessert">🍓 Dessert</option>
+              <option value="Snack">🍎 Snack</option>
             </select>
           </div>
           <div class="modal-field">
-            <label class="modal-label">Régime</label>
+            <label class="modal-label">Régime (diet)</label>
             <select class="modal-select" id="editDiet">
               <option value="">— Aucun —</option>
               <option value="Vegan">🌿 Vegan</option>
               <option value="Végétarien">🥕 Végétarien</option>
               <option value="Keto">🥑 Keto</option>
               <option value="Paléo">🍖 Paléo</option>
-              <option value="Sans gluten">🌾 Sans gluten</option>
-              <option value="Sans lactose">🥛 Sans lactose</option>
-              <option value="Haute protéine">💪 Haute protéine</option>
+              <option value="Sans Gluten">🌾 Sans Gluten</option>
+              <option value="Sans Lactose">🥛 Sans Lactose</option>
+              <option value="Haute Protéine">💪 Haute Protéine</option>
+              <option value="Détox">🍃 Détox</option>
             </select>
           </div>
         </div>
@@ -2141,6 +2168,28 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
         <button class="btn-modal-cancel" onclick="closeDeleteModal()">Annuler</button>
         <button class="btn-confirm-delete" onclick="confirmDelete()">
           🗑️ Supprimer définitivement
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CONFIRM DELETE ALL MODAL ══ -->
+  <div class="modal-overlay" id="deleteAllModal">
+    <div class="confirm-box">
+      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-title">Supprimer toutes les recettes ?</div>
+      <div class="confirm-sub" id="deleteAllCount">
+        Cette action supprimera définitivement toutes les recettes affichées.
+      </div>
+      <div style="margin-bottom:16px;">
+        <input type="text" class="modal-input" id="deleteAllConfirmInput"
+          placeholder='Tapez "SUPPRIMER" pour confirmer'
+          style="text-align:center;letter-spacing:2px;">
+      </div>
+      <div class="confirm-actions">
+        <button class="btn-modal-cancel" onclick="closeDeleteAllModal()">Annuler</button>
+        <button class="btn-confirm-delete" id="btnConfirmDeleteAll" onclick="confirmDeleteAll()">
+          🗑️ Tout supprimer définitivement
         </button>
       </div>
     </div>
@@ -2847,15 +2896,17 @@ async function loadRecipes() {
 function filterRecipes() {
   const query   = (document.getElementById('manageSearch').value || '').toLowerCase();
   const cat     = document.getElementById('manageFilter').value;
+  const diet    = document.getElementById('manageDiet').value;
   const premium = document.getElementById('managePremium').value;
 
   const filtered = allRecipes.filter(r => {
     const matchQ  = !query || r.title?.toLowerCase().includes(query);
     const matchC  = !cat   || r.category === cat;
+    const matchD  = !diet  || r.diet === diet;
     const matchP  = !premium
       || (premium === 'premium' && r.isPremium)
       || (premium === 'free'    && !r.isPremium);
-    return matchQ && matchC && matchP;
+    return matchQ && matchC && matchD && matchP;
   });
 
   document.getElementById('recipeCountDisplay').textContent = filtered.length;
@@ -3002,9 +3053,104 @@ async function confirmDelete() {
 
 // Close modals on overlay click
 document.addEventListener('click', e => {
-  if (e.target.id === 'editModal')   closeEditModal();
-  if (e.target.id === 'deleteModal') closeDeleteModal();
+  if (e.target.id === 'editModal')      closeEditModal();
+  if (e.target.id === 'deleteModal')    closeDeleteModal();
+  if (e.target.id === 'deleteAllModal') closeDeleteAllModal();
 });
+
+/* ══════════════════════════════════════════
+   DELETE ALL
+══════════════════════════════════════════ */
+let currentFilteredIds = [];
+
+function openDeleteAllModal() {
+  // Get current filtered recipes
+  const query   = (document.getElementById('manageSearch').value || '').toLowerCase();
+  const cat     = document.getElementById('manageFilter').value;
+  const diet    = document.getElementById('manageDiet').value;
+  const premium = document.getElementById('managePremium').value;
+
+  const filtered = allRecipes.filter(r => {
+    const matchQ = !query || r.title?.toLowerCase().includes(query);
+    const matchC = !cat   || r.category === cat;
+    const matchD = !diet  || r.diet === diet;
+    const matchP = !premium
+      || (premium === 'premium' && r.isPremium)
+      || (premium === 'free'    && !r.isPremium);
+    return matchQ && matchC && matchD && matchP;
+  });
+
+  if (filtered.length === 0) {
+    showToast('Aucune recette à supprimer', 'info');
+    return;
+  }
+
+  currentFilteredIds = filtered.map(r => r.id);
+
+  const sub = document.getElementById('deleteAllCount');
+  sub.innerHTML = `<strong style="color:var(--red)">${filtered.length} recettes</strong> seront supprimées définitivement de Firestore.<br>Cette action est irréversible.`;
+
+  document.getElementById('deleteAllConfirmInput').value = '';
+  document.getElementById('deleteAllModal').classList.add('show');
+}
+
+function closeDeleteAllModal() {
+  document.getElementById('deleteAllModal').classList.remove('show');
+  currentFilteredIds = [];
+}
+
+async function confirmDeleteAll() {
+  const confirmText = document.getElementById('deleteAllConfirmInput').value.trim();
+  if (confirmText !== 'SUPPRIMER') {
+    showToast('Tapez exactement "SUPPRIMER" pour confirmer', 'error');
+    document.getElementById('deleteAllConfirmInput').style.borderColor = 'var(--red)';
+    setTimeout(() => {
+      document.getElementById('deleteAllConfirmInput').style.borderColor = '';
+    }, 1500);
+    return;
+  }
+
+  const btn = document.getElementById('btnConfirmDeleteAll');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Suppression…';
+
+  const total = currentFilteredIds.length;
+  let deleted = 0;
+  let errors  = 0;
+
+  // Delete in batches of 10
+  const BATCH = 10;
+  for (let i = 0; i < currentFilteredIds.length; i += BATCH) {
+    const batch = db.batch();
+    const chunk = currentFilteredIds.slice(i, i + BATCH);
+    chunk.forEach(id => {
+      batch.delete(db.collection('recipes').doc(id));
+    });
+    try {
+      await batch.commit();
+      deleted += chunk.length;
+    } catch(e) {
+      errors += chunk.length;
+      console.error('Batch delete error:', e);
+    }
+    btn.innerHTML = `Suppression… ${deleted}/${total}`;
+  }
+
+  // Update local cache
+  allRecipes = allRecipes.filter(r => !currentFilteredIds.includes(r.id));
+  currentFilteredIds = [];
+  filterRecipes();
+  closeDeleteAllModal();
+
+  if (errors === 0) {
+    showToast(`✅ ${deleted} recette(s) supprimée(s) !`, 'success');
+  } else {
+    showToast(`⚠️ ${deleted} supprimées, ${errors} erreurs`, 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🗑️ Tout supprimer définitivement';
+}
 
 </script>
 </body>
